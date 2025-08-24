@@ -6,12 +6,457 @@
 	<envoy_ip>{Envoy IP}</envoy_ip>
 	<port>8080</port>
     
-    <query name="system_info">https://{envoy_ip}/info</query>
-    <query name="meters">https://{envoy_ip}/ivp/meters</query>
-    <query name="production_meter">https://{envoy_ip}/api/v1/production</query>
-    <query name="energy">https://{envoy_ip}/ivp/pdm/energy</query>
-    <query name="inverters">https://{envoy_ip}/api/v1/production/inverters</query>
-    <query name="livedata">https://{envoy_ip}/ivp/livedata/status</query>
-    <query name="consumption">https://{envoy_ip}/ivp/meters/reports/consumption</query>
-    <query name="grid">https://{envoy_ip}/ivp/meters/gridReading</query>
+    <!-- Core system endpoints -->
+    <query name="system_info" url="https://{envoy_ip}/info">
+        <metric name="envoy_info" type="gauge" help="System information" labels="serial,software,part_number,build_id">
+            <field json_path="device.sn" label="serial"/>
+            <field json_path="device.software" label="software"/>
+            <field json_path="device.pn" label="part_number"/>
+            <field json_path="build_info.build_id" label="build_id"/>
+            <value>1</value>
+        </metric>
+        <metric name="envoy_last_enlighten_report_timestamp" type="gauge" help="Last Enlighten report timestamp">
+            <field json_path="network.last_enlighten_report_time"/>
+        </metric>
+        <metric name="envoy_web_comm_status" type="gauge" help="Web communication status">
+            <field json_path="network.web_comm" transform="bool_to_int"/>
+        </metric>
+    </query>
+    
+    <query name="production_meter" url="https://{envoy_ip}/api/v1/production">
+        <metric name="envoy_production_watts_now" type="gauge" help="Current production in watts">
+            <field json_path="wattsNow"/>
+        </metric>
+        <metric name="envoy_production_wh_today" type="counter" help="Production today in watt-hours">
+            <field json_path="wattHoursToday"/>
+        </metric>
+        <metric name="envoy_production_wh_lifetime" type="counter" help="Lifetime production in watt-hours">
+            <field json_path="wattHoursLifetime"/>
+        </metric>
+        <metric name="envoy_production_wh_seven_days" type="counter" help="Production last seven days in watt-hours">
+            <field json_path="wattHoursSevenDays"/>
+        </metric>
+    </query>
+    
+    <query name="inverters" url="https://{envoy_ip}/api/v1/production/inverters" array="true">
+        <metric name="envoy_inverter_watts" type="gauge" help="Current inverter output in watts" labels="serial">
+            <field json_path="serialNumber" label="serial"/>
+            <field json_path="lastReportWatts"/>
+        </metric>
+        <metric name="envoy_inverter_max_watts" type="gauge" help="Maximum inverter output in watts" labels="serial">
+            <field json_path="serialNumber" label="serial"/>
+            <field json_path="maxReportWatts"/>
+        </metric>
+        <metric name="envoy_inverter_last_report_timestamp" type="gauge" help="Last report timestamp" labels="serial">
+            <field json_path="serialNumber" label="serial"/>
+            <field json_path="lastReportDate"/>
+        </metric>
+        <metric name="envoy_inverter_dev_type" type="gauge" help="Inverter device type" labels="serial">
+            <field json_path="serialNumber" label="serial"/>
+            <field json_path="devType"/>
+        </metric>
+    </query>
+    
+    <query name="livedata" url="https://{envoy_ip}/ivp/livedata/status">
+        <metric name="envoy_pv_power_mw" type="gauge" help="PV power in milliwatts">
+            <field json_path="meters.pv.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_pv_power_watts" type="gauge" help="PV power in watts" transform="mw_to_watts">
+            <field json_path="meters.pv.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_grid_power_mw" type="gauge" help="Grid power in milliwatts">
+            <field json_path="meters.grid.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_grid_power_watts" type="gauge" help="Grid power in watts (positive=import, negative=export)" transform="mw_to_watts">
+            <field json_path="meters.grid.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_load_power_mw" type="gauge" help="Load power in milliwatts">
+            <field json_path="meters.load.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_load_power_watts" type="gauge" help="Load power in watts" transform="mw_to_watts">
+            <field json_path="meters.load.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_storage_power_mw" type="gauge" help="Storage power in milliwatts" condition="storage_present">
+            <field json_path="meters.storage.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_storage_power_watts" type="gauge" help="Storage power in watts" transform="mw_to_watts" condition="storage_present">
+            <field json_path="meters.storage.agg_p_mw"/>
+        </metric>
+        <metric name="envoy_storage_soc_percentage" type="gauge" help="Storage state of charge percentage" condition="storage_present">
+            <field json_path="meters.storage.agg_soc"/>
+        </metric>
+        <metric name="envoy_connection_status" type="gauge" help="Connection status" labels="type">
+            <field json_path="connection.mqtt_state" label="type" label_value="mqtt" transform="connected_to_int"/>
+            <field json_path="connection.auth_state" label="type" label_value="auth" transform="ok_to_int"/>
+            <field json_path="connection.prov_state" label="type" label_value="provisioning" transform="ok_to_int"/>
+        </metric>
+        <metric name="envoy_meters_last_update_timestamp" type="gauge" help="Meters last update timestamp">
+            <field json_path="meters.last_update"/>
+        </metric>
+    </query>
+    
+    <query name="meters" url="https://{envoy_ip}/ivp/meters" array="true">
+        <metric name="envoy_meter_enabled" type="gauge" help="Meter enabled status" labels="eid,type,phase_mode">
+            <field json_path="eid" label="eid"/>
+            <field json_path="measurementType" label="type"/>
+            <field json_path="phaseMode" label="phase_mode"/>
+            <field json_path="state" transform="enabled_to_int"/>
+        </metric>
+        <metric name="envoy_meter_phase_count" type="gauge" help="Meter phase count" labels="eid,type">
+            <field json_path="eid" label="eid"/>
+            <field json_path="measurementType" label="type"/>
+            <field json_path="phaseCount"/>
+        </metric>
+    </query>
+    
+    <query name="consumption_totals" url="https://{envoy_ip}/ivp/meters/readings" array="true">
+        <metric name="envoy_meter_real_power_watts" type="gauge" help="Real power in watts" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="realPwr"/>
+        </metric>
+        <metric name="envoy_meter_energy_delivered_wh" type="counter" help="Energy delivered in watt-hours" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="actEnergyDlvd"/>
+        </metric>
+        <metric name="envoy_meter_energy_received_wh" type="counter" help="Energy received in watt-hours" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="actEnergyRcvd"/>
+        </metric>
+        <metric name="envoy_meter_voltage_volts" type="gauge" help="Voltage in volts" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="voltage"/>
+        </metric>
+        <metric name="envoy_meter_current_amps" type="gauge" help="Current in amperes" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="current"/>
+        </metric>
+        <metric name="envoy_meter_frequency_hz" type="gauge" help="Frequency in Hz" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="freq"/>
+        </metric>
+        <metric name="envoy_meter_power_factor" type="gauge" help="Power factor" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="pwrFactor"/>
+        </metric>
+        <metric name="envoy_meter_apparent_power_va" type="gauge" help="Apparent power in VA" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="apprntPwr"/>
+        </metric>
+        <metric name="envoy_meter_reactive_power_var" type="gauge" help="Reactive power in VAR" labels="eid">
+            <field json_path="eid" label="eid"/>
+            <field json_path="reactPwr"/>
+        </metric>
+    </query>
+    
+    <!-- Battery and storage endpoints (comment out if no batteries) -->
+    <query name="batteries" url="https://{envoy_ip}/api/v1/production/batteries" array="true" condition="battery_present">
+        <metric name="envoy_battery_power_watts" type="gauge" help="Current battery power in watts" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="wNow"/>
+        </metric>
+        <metric name="envoy_battery_energy_wh" type="gauge" help="Current battery energy in watt-hours" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="whNow"/>
+        </metric>
+        <metric name="envoy_battery_soc_percentage" type="gauge" help="Battery state of charge percentage" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="percentFull"/>
+        </metric>
+        <metric name="envoy_battery_state" type="gauge" help="Battery state (-1=discharging, 0=idle, 1=charging)" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="state" transform="battery_state_to_int"/>
+        </metric>
+        <metric name="envoy_battery_max_cell_temp_celsius" type="gauge" help="Maximum cell temperature in Celsius" labels="type" condition="temp_available">
+            <field json_path="type" label="type"/>
+            <field json_path="maxCellTemp"/>
+        </metric>
+        <metric name="envoy_battery_min_cell_temp_celsius" type="gauge" help="Minimum cell temperature in Celsius" labels="type" condition="temp_available">
+            <field json_path="type" label="type"/>
+            <field json_path="minCellTemp"/>
+        </metric>
+        <metric name="envoy_battery_active_count" type="gauge" help="Active battery count" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="activeCount"/>
+        </metric>
+    </query>
+    
+    <!-- Tariff and grid management (may require installer credentials) -->
+    <query name="tariff" url="https://{envoy_ip}/admin/lib/tariff" condition="tariff_available">
+        <metric name="envoy_battery_reserve_soc_percentage" type="gauge" help="Battery reserve SOC percentage">
+            <field json_path="storage_settings.reserved_soc"/>
+        </metric>
+        <metric name="envoy_battery_grid_charging_enabled" type="gauge" help="Grid charging enabled status">
+            <field json_path="storage_settings.charging_from_grid_enabled" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_battery_mode_info" type="gauge" help="Battery mode information" labels="mode">
+            <field json_path="storage_settings.mode" label="mode"/>
+            <value>1</value>
+        </metric>
+        <metric name="envoy_battery_very_low_soc_percentage" type="gauge" help="Battery very low SOC percentage">
+            <field json_path="storage_settings.very_low_soc"/>
+        </metric>
+        <metric name="envoy_battery_grid_charging_backup_soc_percentage" type="gauge" help="Grid charging backup SOC percentage">
+            <field json_path="storage_settings.grid_charging_backup_soc"/>
+        </metric>
+    </query>
+    
+    <!-- Device health and inventory -->
+    <query name="inventory" url="https://{envoy_ip}/inventory.json">
+        <metric name="envoy_device_count" type="gauge" help="Number of devices by type" labels="type">
+            <field json_path="devices" transform="count_by_type"/>
+        </metric>
+    </query>
+    
+    <query name="device_status" url="https://{envoy_ip}/ivp/ensemble/device_status" condition="ensemble_available">
+        <metric name="envoy_device_producing" type="gauge" help="Device producing status" labels="serial,type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="type"/>
+            <field json_path="producing" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_communicating" type="gauge" help="Device communication status" labels="serial,type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="type"/>
+            <field json_path="communicating" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_operating" type="gauge" help="Device operating status" labels="serial,type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="type"/>
+            <field json_path="operating" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_last_report_timestamp" type="gauge" help="Device last report timestamp" labels="serial,type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="type"/>
+            <field json_path="last_rpt_date"/>
+        </metric>
+        <metric name="envoy_device_status_code" type="gauge" help="Device status code" labels="serial,type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="type"/>
+            <field json_path="dev_status"/>
+        </metric>
+    </query>
+    
+    <!-- Network connectivity -->
+    <query name="wireless_connection" url="https://{envoy_ip}/admin/lib/wireless_connection" condition="wireless_available">
+        <metric name="envoy_wireless_connected" type="gauge" help="Wireless connection status" labels="network">
+            <field json_path="network_name" label="network"/>
+            <field json_path="connected" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_wireless_signal_strength_percentage" type="gauge" help="Wireless signal strength percentage">
+            <field json_path="signal_strength,signal_strength_max" transform="signal_strength_percentage"/>
+        </metric>
+        <metric name="envoy_wireless_signal_strength_raw" type="gauge" help="Wireless signal strength raw value">
+            <field json_path="signal_strength"/>
+        </metric>
+        <metric name="envoy_wireless_signal_strength_max" type="gauge" help="Wireless signal strength maximum value">
+            <field json_path="signal_strength_max"/>
+        </metric>
+    </query>
+    
+    <!-- Battery and storage endpoints (comment out if no batteries) -->
+    <query name="batteries" url="https://{envoy_ip}/api/v1/production/batteries" array="true" condition="battery_present">
+        <metric name="envoy_battery_power_watts" type="gauge" help="Current battery power in watts" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="wNow"/>
+        </metric>
+        <metric name="envoy_battery_energy_wh" type="gauge" help="Current battery energy in watt-hours" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="whNow"/>
+        </metric>
+        <metric name="envoy_battery_soc_percentage" type="gauge" help="Battery state of charge percentage" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="percentFull"/>
+        </metric>
+        <metric name="envoy_battery_state" type="gauge" help="Battery state (-1=discharging, 0=idle, 1=charging)" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="state" transform="battery_state_to_int"/>
+        </metric>
+        <metric name="envoy_battery_max_cell_temp_celsius" type="gauge" help="Maximum cell temperature in Celsius" labels="type" condition="temp_available">
+            <field json_path="type" label="type"/>
+            <field json_path="maxCellTemp"/>
+        </metric>
+        <metric name="envoy_battery_active_count" type="gauge" help="Active battery count" labels="type">
+            <field json_path="type" label="type"/>
+            <field json_path="activeCount"/>
+        </metric>
+    </query>
+    
+    <!-- Tariff and grid management (may require installer credentials) -->
+    <query name="tariff" url="https://{envoy_ip}/admin/lib/tariff" condition="tariff_available">
+        <metric name="envoy_battery_reserve_soc_percentage" type="gauge" help="Battery reserve SOC percentage">
+            <field json_path="storage_settings.reserved_soc"/>
+        </metric>
+        <metric name="envoy_battery_grid_charging_enabled" type="gauge" help="Grid charging enabled status">
+            <field json_path="storage_settings.charging_from_grid_enabled" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_battery_mode_info" type="gauge" help="Battery mode information" labels="mode">
+            <field json_path="storage_settings.mode" label="mode"/>
+            <value>1</value>
+        </metric>
+        <metric name="envoy_battery_very_low_soc_percentage" type="gauge" help="Battery very low SOC percentage">
+            <field json_path="storage_settings.very_low_soc"/>
+        </metric>
+        <metric name="envoy_tariff_currency_info" type="gauge" help="Tariff currency information" labels="currency">
+            <field json_path="currency" label="currency"/>
+            <value>1</value>
+        </metric>
+    </query>
+    
+    <!-- Device health and inventory -->
+    <query name="inventory" url="https://{envoy_ip}/inventory.json">
+        <metric name="envoy_inventory_available" type="gauge" help="Device inventory availability">
+            <value>1</value>
+        </metric>
+    </query>
+    
+    <query name="device_status" url="https://{envoy_ip}/ivp/ensemble/device_status" array="true" condition="ensemble_available">
+        <metric name="envoy_device_producing" type="gauge" help="Device producing status" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="producing" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_communicating" type="gauge" help="Device communication status" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="communicating" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_operating" type="gauge" help="Device operating status" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="operating" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_provisioned" type="gauge" help="Device provisioned status" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="provisioned" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_device_last_report_timestamp" type="gauge" help="Device last report timestamp" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="last_rpt_date"/>
+        </metric>
+        <metric name="envoy_device_status_code" type="gauge" help="Device status code" labels="serial,device_type">
+            <field json_path="serial_num" label="serial"/>
+            <field json_path="type" label="device_type"/>
+            <field json_path="dev_status"/>
+        </metric>
+    </query>
+    
+    <!-- Network connectivity -->
+    <query name="wireless_connection" url="https://{envoy_ip}/admin/lib/wireless_connection" condition="wireless_available">
+        <metric name="envoy_wireless_connected" type="gauge" help="Wireless connection status" labels="network">
+            <field json_path="network_name" label="network"/>
+            <field json_path="connected" transform="bool_to_int"/>
+        </metric>
+        <metric name="envoy_wireless_signal_strength_percentage" type="gauge" help="Wireless signal strength percentage">
+            <field json_path="signal_strength,signal_strength_max" transform="signal_strength_percentage"/>
+        </metric>
+        <metric name="envoy_wireless_signal_strength_raw" type="gauge" help="Wireless signal strength raw value">
+            <field json_path="signal_strength"/>
+        </metric>
+    </query>
+    
+    <!-- Additional legacy endpoints for backward compatibility -->
+    <query name="consumption" url="https://{envoy_ip}/ivp/meters/reports/consumption">
+        <metric name="envoy_consumption_report_available" type="gauge" help="Consumption report availability">
+            <value>1</value>
+        </metric>
+    </query>
+    
+    <query name="energy" url="https://{envoy_ip}/ivp/pdm/energy">
+        <metric name="envoy_energy_report_available" type="gauge" help="Energy report availability">
+            <value>1</value>
+        </metric>
+    </query>
+    
+    <query name="grid" url="https://{envoy_ip}/ivp/meters/gridReading">
+        <metric name="envoy_grid_reading_available" type="gauge" help="Grid reading availability">
+            <value>1</value>
+        </metric>
+    </query>
+    
+    <!-- Calculated/Derived Metrics (computed from other metrics) -->
+    <calculated_metrics>
+        <metric name="envoy_grid_import_watts" type="gauge" help="Power imported from grid in watts">
+            <calculation>max(0, envoy_grid_power_watts)</calculation>
+        </metric>
+        <metric name="envoy_grid_export_watts" type="gauge" help="Power exported to grid in watts">
+            <calculation>max(0, -envoy_grid_power_watts)</calculation>
+        </metric>
+        <metric name="envoy_net_consumption_watts" type="gauge" help="Net consumption in watts (load minus local PV)">
+            <calculation>max(0, envoy_load_power_watts - envoy_pv_power_watts)</calculation>
+        </metric>
+        <metric name="envoy_self_consumption_percentage" type="gauge" help="Percentage of PV production consumed locally" condition="pv_producing">
+            <calculation>clamp(0, 100, (envoy_pv_power_watts - envoy_grid_export_watts) / envoy_pv_power_watts * 100)</calculation>
+        </metric>
+        <metric name="envoy_solar_coverage_percentage" type="gauge" help="Percentage of load covered by solar production" condition="load_present">
+            <calculation>clamp(0, 100, envoy_pv_power_watts / envoy_load_power_watts * 100)</calculation>
+        </metric>
+        <metric name="envoy_energy_balance_watts" type="gauge" help="Energy balance (PV + Battery - Load)">
+            <calculation>envoy_pv_power_watts + coalesce(envoy_storage_power_watts, 0) - envoy_load_power_watts</calculation>
+        </metric>
+    </calculated_metrics>
+    
+    <!-- Transform functions for data conversion -->
+    <transforms>
+        <transform name="bool_to_int">
+            <description>Convert boolean to integer (true=1, false=0)</description>
+        </transform>
+        <transform name="mw_to_watts">
+            <description>Convert milliwatts to watts</description>
+        </transform>
+        <transform name="connected_to_int">
+            <description>Convert 'connected' string to integer</description>
+        </transform>
+        <transform name="ok_to_int">
+            <description>Convert 'ok' string to integer</description>
+        </transform>
+        <transform name="enabled_to_int">
+            <description>Convert 'enabled' string to integer</description>
+        </transform>
+        <transform name="battery_state_to_int">
+            <description>Convert battery state to integer (charging=1, idle=0, discharging=-1)</description>
+        </transform>
+        <transform name="signal_strength_percentage">
+            <description>Calculate signal strength percentage from strength and max values</description>
+        </transform>
+        <transform name="count_by_type">
+            <description>Count array elements by type field</description>
+        </transform>
+    </transforms>
+    
+    <!-- Conditions for conditional metric generation -->
+    <conditions>
+        <condition name="battery_present">
+            <description>Check if battery/storage system is present</description>
+            <check>json_path_exists("meters.storage") OR array_has_type("ib")</check>
+        </condition>
+        <condition name="storage_present">
+            <description>Check if storage data is available in livedata</description>
+            <check>json_path_value("meters.storage.agg_p_mw") != 0 OR json_path_value("meters.storage.agg_soc") > 0</check>
+        </condition>
+        <condition name="tariff_available">
+            <description>Check if tariff endpoint is accessible</description>
+            <check>endpoint_accessible</check>
+        </condition>
+        <condition name="ensemble_available">
+            <description>Check if Ensemble/IQ8 features are available</description>
+            <check>endpoint_accessible</check>
+        </condition>
+        <condition name="wireless_available">
+            <description>Check if wireless connection info is available</description>
+            <check>endpoint_accessible</check>
+        </condition>
+        <condition name="temp_available">
+            <description>Check if temperature data is available</description>
+            <check>json_path_value("maxCellTemp") > 0</check>
+        </condition>
+        <condition name="pv_producing">
+            <description>Check if PV is currently producing</description>
+            <check>metric_value("envoy_pv_power_watts") > 0</check>
+        </condition>
+        <condition name="load_present">
+            <description>Check if load data is available</description>
+            <check>metric_value("envoy_load_power_watts") > 0</check>
+        </condition>
+    </conditions>
 </envoy_config>

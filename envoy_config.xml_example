@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<envoy_config>
+	<user>{My Email}</user>
+	<password>{My password}</password>
+	<envoy_serial>{My Serial}</envoy_serial>
+	<envoy_ip>{Envoy IP}</envoy_ip>
+	<port>8080</port>
+    
+    <query name="system_info">https://{envoy_ip}/info</query>
+    <query name="meters">https://{envoy_ip}/ivp/meters</query>
+    <query name="production_meter">https://{envoy_ip}/api/v1/production</query>
+    <query name="energy">https://{envoy_ip}/ivp/pdm/energy</query>
+    <query name="inverters">https://{envoy_ip}/api/v1/production/inverters</query>
+    <query name="livedata">https://{envoy_ip}/ivp/livedata/status</query>
+    <query name="consumption">https://{envoy_ip}/ivp/meters/reports/consumption</query>
+    <query name="grid">https://{envoy_ip}/ivp/meters/gridReading</query>
+</envoy_config>

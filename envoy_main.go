@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 )
-// Include all the existing methods (checkCondition, transformValue, processMetric, etc.)
-// For brevity, I'll include the key new web-related methods and main function
 
 func main() {
 	configFile := "envoy_config.xml"
@@ -18,6 +18,28 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create exporter: %v", err)
 	}
+
+	// Set up graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	go func() {
+		sig := <-sigChan
+		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		
+		// Shutdown production tracker
+		if exporter.productionTracker != nil {
+			exporter.productionTracker.Shutdown()
+		}
+		
+		// Shutdown MQTT publisher
+		if exporter.mqttPublisher != nil {
+			exporter.mqttPublisher.Shutdown()
+		}
+		
+		log.Printf("Graceful shutdown complete")
+		os.Exit(0)
+	}()
 
 	// Ensure web directory exists
 	if _, err := os.Stat(exporter.config.WebDir); os.IsNotExist(err) {
@@ -33,7 +55,8 @@ func main() {
 	http.HandleFunc("/health", exporter.serveHealth)
 	http.HandleFunc("/debug", exporter.serveDebug)
 	http.HandleFunc("/api/monitor", exporter.serveMonitorAPI)
-	http.HandleFunc("/api/daily-production", exporter.serveDailyProductionAPI) // ADD THIS LINE
+	http.HandleFunc("/api/daily-production", exporter.serveDailyProductionAPI)
+	http.HandleFunc("/api/mqtt-status", exporter.serveMQTTStatusAPI)  // ADD THIS LINE
 	http.Handle("/", exporter.serveStaticFiles())
 
 	listenAddr := ":" + exporter.config.Port
@@ -41,7 +64,16 @@ func main() {
 	log.Printf("Envoy IP: %s", exporter.config.EnvoyIP)
 	log.Printf("Web Directory: %s", exporter.config.WebDir)
 	log.Printf("Location: %.6f, %.6f", exporter.config.Latitude, exporter.config.Longitude)
-	log.Printf("Production tracking enabled")  // ADD THIS LINE
+	log.Printf("Production tracking enabled")
+	
+	// Log MQTT status
+	if exporter.config.MQTT.Enabled {
+		log.Printf("MQTT publishing enabled - Broker: %s:%d, Topic: %s, Interval: %ds", 
+			exporter.config.MQTT.Broker, exporter.config.MQTT.Port, 
+			exporter.config.MQTT.TopicPrefix, exporter.config.MQTT.PublishInterval)
+	} else {
+		log.Printf("MQTT publishing disabled")
+	}
 	
 	log.Fatal(http.ListenAndServe(listenAddr, nil))
 }

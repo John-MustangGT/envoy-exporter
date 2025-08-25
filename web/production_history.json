@@ -96,10 +96,10 @@
         },
         {
           "hour": 13,
-          "production": 0,
-          "power": 0,
-          "timestamp": 0,
-          "sample_count": 0
+          "production": 9331,
+          "power": 9331,
+          "timestamp": 1756143102,
+          "sample_count": 2
         },
         {
           "hour": 14,
@@ -117,17 +117,17 @@
         },
         {
           "hour": 16,
-          "production": 3946,
-          "power": 3946,
-          "timestamp": 1756139275,
-          "sample_count": 3
+          "production": 4697,
+          "power": 4697,
+          "timestamp": 1756141075,
+          "sample_count": 9
         },
         {
           "hour": 17,
-          "production": 0,
-          "power": 0,
-          "timestamp": 0,
-          "sample_count": 0
+          "production": 8781,
+          "power": 8781,
+          "timestamp": 1756141975,
+          "sample_count": 3
         },
         {
           "hour": 18,
@@ -172,12 +172,12 @@
           "sample_count": 0
         }
       ],
-      "total_wh": 22505,
-      "peak_watts": 4856,
-      "peak_hour": 16,
+      "total_wh": 29444,
+      "peak_watts": 9471,
+      "peak_hour": 17,
       "first_sample": 1756138675,
-      "last_sample": 1756139275,
-      "sample_count": 3
+      "last_sample": 1756143102,
+      "sample_count": 14
     }
   },
   "last_cleanup": 0

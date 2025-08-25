@@ -3,5 +3,8 @@ module envoy-prometheus-exporter
 go 1.21
 
 require (
-	// No external dependencies needed - using only Go standard library
+	github.com/eclipse/paho.mqtt.golang v1.5.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 )

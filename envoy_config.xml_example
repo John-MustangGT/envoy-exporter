@@ -14,6 +14,21 @@
     <latitude>42.3601</latitude>     <!-- Replace with your latitude -->
     <longitude>-71.0589</longitude>   <!-- Replace with your longitude -->
     <timezone>America/New_York</timezone> <!-- Replace with your timezone -->
+
+    <!-- NEW: MQTT Configuration -->
+    <mqtt enabled="true">
+        <broker>192.168.1.50</broker>
+        <port>1883</port>
+        <username>mqtt_user</username>
+        <password>mqtt_password</password>
+        <client_id>envoy-exporter</client_id>
+        <topic_prefix>solar/envoy</topic_prefix>
+        <qos>1</qos>
+        <retain>true</retain>
+        <tls>false</tls>
+        <insecure_tls>false</insecure_tls>
+        <publish_interval>60</publish_interval>
+    </mqtt>
     
     <!-- Core system endpoints (usually work on all models) -->
     <query name="production_meter" url="https://{envoy_ip}/api/v1/production">

@@ -19,6 +19,7 @@ type Config struct {
 	Latitude           float64             `xml:"latitude"`
 	Longitude          float64             `xml:"longitude"`
 	Timezone           string              `xml:"timezone"`
+	MQTT               MQTTConfig          `xml:"mqtt"`                // ADD THIS LINE
 	Queries            []Query             `xml:"query"`
 	CalculatedMetrics  CalculatedMetrics   `xml:"calculated_metrics"`
 	Transforms         Transforms          `xml:"transforms"`
@@ -80,6 +81,22 @@ type Condition struct {
 	Name        string `xml:"name,attr"`
 	Description string `xml:"description"`
 	Check       string `xml:"check"`
+}
+
+// MQTT configuration structure
+type MQTTConfig struct {
+	Enabled         bool   `xml:"enabled,attr"`
+	Broker          string `xml:"broker"`
+	Port            int    `xml:"port"`
+	Username        string `xml:"username"`
+	Password        string `xml:"password"`
+	ClientID        string `xml:"client_id"`
+	TopicPrefix     string `xml:"topic_prefix"`
+	QoS             byte   `xml:"qos"`
+	Retain          bool   `xml:"retain"`
+	TLS             bool   `xml:"tls"`
+	InsecureTLS     bool   `xml:"insecure_tls"`
+	PublishInterval int    `xml:"publish_interval"` // seconds, default 60
 }
 
 // Authentication structures
@@ -181,5 +198,6 @@ type EnvoyExporter struct {
 	resultsMutex      sync.RWMutex
 	lastMonitorData   MonitorData
 	monitorMutex      sync.RWMutex
-	productionTracker *ProductionTracker  // ADD THIS LINE
+	productionTracker *ProductionTracker
+	mqttPublisher     *MQTTPublisher    // ADD THIS LINE
 }

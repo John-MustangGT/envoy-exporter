@@ -471,7 +471,7 @@ func (e *EnvoyExporter) refreshMonitorData() {
 func (e *EnvoyExporter) calculateSolarPosition() SolarPosition {
 	now := time.Now()
 	lat := e.config.Latitude
-	lng := e.config.Longitude
+	//lng := e.config.Longitude
 
 	// Convert to radians
 	latRad := lat * math.Pi / 180.0
@@ -1048,14 +1048,14 @@ func (e *EnvoyExporter) createDefaultWebFiles() {
                 const statusClass = isActive ? 'status-online' : 'status-offline';
                 const statusText = isActive ? 'Active' : 'Idle';
                 
-                card.innerHTML = `
+                card.innerHTML = '
                     <div class="inverter-serial">${inverter.serial}</div>
                     <div class="inverter-power">${formatWatts(inverter.current_watts)}</div>
                     <div class="inverter-status ${statusClass}">${statusText}</div>
                     <div style="font-size: 0.7em; color: #7f8c8d; margin-top: 5px;">
                         Max: ${formatWatts(inverter.max_watts)}
                     </div>
-                `;
+                ';
                 
                 grid.appendChild(card);
             });
@@ -1293,12 +1293,6 @@ func (e *EnvoyExporter) transformValue(value interface{}, transform string) inte
 		return 0
 	}
 	return value
-}
-
-func (e *EnvoyExporter) serveMetrics(w http.ResponseWriter, r *http.Request) {
-	// Simplified version - include your existing serveMetrics implementation
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-	w.Write([]byte("# Metrics endpoint - implement full logic from previous version\n"))
 }
 
 func (e *EnvoyExporter) serveHealth(w http.ResponseWriter, r *http.Request) {

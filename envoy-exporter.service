@@ -1,0 +1,19 @@
+[Unit]
+Description=Envoy Exporter for monitoring EnPhase 
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/usr/share/envoy-exporter
+ExecStart=/usr/bin/envoy-prometheus-exporter
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=envoy-exporter
+Environment=PATH=/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

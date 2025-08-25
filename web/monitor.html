@@ -41,6 +41,9 @@
             gap: 20px;
             margin-bottom: 20px;
         }
+        .wide-card {
+            grid-column: 1 / -1;
+        }
         .card {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
@@ -153,11 +156,95 @@
             font-size: 1.5em;
             margin: 0 10px;
         }
+        
+        /* Production Chart Styles */
+        .chart-container {
+            margin: 20px 0;
+            height: 300px;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .chart-controls select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+        .chart-legend {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-bar {
+            width: 12px;
+            height: 12px;
+            background: #3498db;
+        }
+        .legend-line {
+            width: 20px;
+            height: 2px;
+            background: #e74c3c;
+        }
+        .chart-canvas {
+            width: 100%;
+            height: 220px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .chart-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 5px;
+        }
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 10px; }
             .grid { grid-template-columns: 1fr; }
             .header h1 { font-size: 2em; }
             .inverter-grid { grid-template-columns: 1fr 1fr; }
+            .chart-header { flex-direction: column; gap: 10px; }
+            .chart-controls { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -166,6 +253,53 @@
         <div class="header">
             <h1>🌞 Solar System Monitor</h1>
             <div class="last-update" id="lastUpdate">Loading...</div>
+        </div>
+
+        <!-- Daily Production Chart -->
+        <div class="card wide-card">
+            <h3>📊 Daily Production</h3>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Hourly Production Comparison</div>
+                    <div class="chart-controls">
+                        <select id="dateSelector">
+                            <option value="">Today</option>
+                        </select>
+                        <select id="previousDateSelector">
+                            <option value="">Yesterday</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-bar"></div>
+                        <span>Current Day</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line"></div>
+                        <span>Previous Day</span>
+                    </div>
+                </div>
+                <canvas class="chart-canvas" id="productionChart" width="800" height="220"></canvas>
+                <div class="chart-stats" id="chartStats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="todayTotal">-- kWh</div>
+                        <div class="stat-label">Today Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="yesterdayTotal">-- kWh</div>
+                        <div class="stat-label">Previous Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="todayPeak">-- W</div>
+                        <div class="stat-label">Today Peak</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="efficiency">--%</div>
+                        <div class="stat-label">vs Previous</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="grid">
@@ -274,6 +408,8 @@
 
     <script>
         let lastUpdateTime = 0;
+        let productionChart = null;
+        let availableDates = [];
 
         function formatWatts(watts) {
             if (watts >= 1000000) return (watts / 1000000).toFixed(2) + ' MW';
@@ -290,6 +426,312 @@
         function formatPercentage(value) {
             if (isNaN(value)) return '--';
             return Math.round(value * 10) / 10 + '%';
+        }
+
+        // Production Chart Functions
+        function initializeChart() {
+            const canvas = document.getElementById('productionChart');
+            const ctx = canvas.getContext('2d');
+            
+            productionChart = {
+                canvas: canvas,
+                ctx: ctx,
+                data: {
+                    current: [],
+                    previous: []
+                }
+            };
+
+            canvas.addEventListener('mousemove', handleChartMouseMove);
+            canvas.addEventListener('mouseleave', handleChartMouseLeave);
+        }
+
+        function drawChart(currentDay, previousDay) {
+            const chart = productionChart;
+            const ctx = chart.ctx;
+            const canvas = chart.canvas;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const padding = 40;
+            const chartWidth = canvas.width - 2 * padding;
+            const chartHeight = canvas.height - 2 * padding;
+            const barWidth = chartWidth / 24;
+
+            // Find max value for scaling
+            let maxValue = 0;
+            if (currentDay && currentDay.hourly_data) {
+                maxValue = Math.max(maxValue, ...currentDay.hourly_data.map(h => h.production || 0));
+            }
+            if (previousDay && previousDay.hourly_data) {
+                maxValue = Math.max(maxValue, ...previousDay.hourly_data.map(h => h.production || 0));
+            }
+            maxValue = Math.max(maxValue, 1); // Prevent division by zero
+
+            // Draw grid lines
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (chartHeight * i) / 5;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+                
+                // Y-axis labels
+                const value = maxValue * (1 - i / 5);
+                ctx.fillStyle = '#666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(formatWh(value), padding - 5, y + 4);
+            }
+            
+            // Vertical grid lines (every 4 hours)
+            for (let hour = 0; hour <= 24; hour += 4) {
+                const x = padding + (hour * barWidth);
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, canvas.height - padding);
+                ctx.stroke();
+                
+                // X-axis labels
+                ctx.fillStyle = '#666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(hour + ':00', x, canvas.height - padding + 15);
+            }
+
+            // Draw current day bars
+            if (currentDay && currentDay.hourly_data) {
+                ctx.fillStyle = '#3498db';
+                currentDay.hourly_data.forEach((hourData, hour) => {
+                    if (hourData.production > 0) {
+                        const barHeight = (hourData.production / maxValue) * chartHeight;
+                        const x = padding + hour * barWidth + 2;
+                        const y = canvas.height - padding - barHeight;
+                        const width = barWidth - 4;
+                        
+                        ctx.fillRect(x, y, width, barHeight);
+                    }
+                });
+            }
+
+            // Draw previous day line
+            if (previousDay && previousDay.hourly_data) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                let firstPoint = true;
+                previousDay.hourly_data.forEach((hourData, hour) => {
+                    if (hourData.production > 0) {
+                        const x = padding + hour * barWidth + barWidth / 2;
+                        const y = canvas.height - padding - (hourData.production / maxValue) * chartHeight;
+                        
+                        if (firstPoint) {
+                            ctx.moveTo(x, y);
+                            firstPoint = false;
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                });
+                ctx.stroke();
+                
+                // Draw points on the line
+                ctx.fillStyle = '#e74c3c';
+                previousDay.hourly_data.forEach((hourData, hour) => {
+                    if (hourData.production > 0) {
+                        const x = padding + hour * barWidth + barWidth / 2;
+                        const y = canvas.height - padding - (hourData.production / maxValue) * chartHeight;
+                        
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                });
+            }
+
+            // Store data for mouse interactions
+            chart.data.current = currentDay ? currentDay.hourly_data : [];
+            chart.data.previous = previousDay ? previousDay.hourly_data : [];
+            chart.maxValue = maxValue;
+            chart.padding = padding;
+            chart.barWidth = barWidth;
+            chart.chartHeight = chartHeight;
+        }
+
+        function handleChartMouseMove(event) {
+            const canvas = productionChart.canvas;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Calculate which hour we're hovering over
+            const hour = Math.floor((x - productionChart.padding) / productionChart.barWidth);
+            
+            if (hour >= 0 && hour < 24) {
+                showTooltip(event, hour);
+            }
+        }
+
+        function handleChartMouseLeave() {
+            hideTooltip();
+        }
+
+        function showTooltip(event, hour) {
+            let tooltip = document.getElementById('chartTooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'chartTooltip';
+                tooltip.style.cssText = `
+                    position: absolute;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    pointer-events: none;
+                    z-index: 1000;
+                    max-width: 200px;
+                `;
+                document.body.appendChild(tooltip);
+            }
+
+            const current = productionChart.data.current[hour];
+            const previous = productionChart.data.previous[hour];
+
+            let content = `<strong>${hour}:00 - ${hour + 1}:00</strong><br>`;
+            
+            if (current && current.production > 0) {
+                content += `Today: ${formatWh(current.production)}<br>`;
+                content += `Power: ${formatWatts(current.power)}<br>`;
+            } else {
+                content += `Today: No data<br>`;
+            }
+
+            if (previous && previous.production > 0) {
+                content += `Previous: ${formatWh(previous.production)}`;
+            } else {
+                content += `Previous: No data`;
+            }
+
+            tooltip.innerHTML = content;
+            tooltip.style.left = event.pageX + 10 + 'px';
+            tooltip.style.top = event.pageY - 10 + 'px';
+            tooltip.style.display = 'block';
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('chartTooltip');
+            if (tooltip) {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function updateChartStats(currentDay, previousDay) {
+            const todayTotal = currentDay ? currentDay.total_wh : 0;
+            const yesterdayTotal = previousDay ? previousDay.total_wh : 0;
+            const todayPeak = currentDay ? currentDay.peak_watts : 0;
+            
+            document.getElementById('todayTotal').textContent = formatWh(todayTotal);
+            document.getElementById('yesterdayTotal').textContent = formatWh(yesterdayTotal);
+            document.getElementById('todayPeak').textContent = formatWatts(todayPeak);
+            
+            let efficiency = 0;
+            if (yesterdayTotal > 0) {
+                efficiency = ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100;
+            }
+            
+            const efficiencyEl = document.getElementById('efficiency');
+            efficiencyEl.textContent = (efficiency >= 0 ? '+' : '') + efficiency.toFixed(1) + '%';
+            efficiencyEl.style.color = efficiency >= 0 ? '#27ae60' : '#e74c3c';
+        }
+
+        function updateDateSelectors(availableDates) {
+            const dateSelector = document.getElementById('dateSelector');
+            const previousDateSelector = document.getElementById('previousDateSelector');
+            
+            // Clear existing options except first
+            while (dateSelector.children.length > 1) {
+                dateSelector.removeChild(dateSelector.lastChild);
+            }
+            while (previousDateSelector.children.length > 1) {
+                previousDateSelector.removeChild(previousDateSelector.lastChild);
+            }
+
+            // Add available dates
+            availableDates.forEach(date => {
+                const option1 = document.createElement('option');
+                option1.value = date;
+                option1.textContent = formatDateForDisplay(date);
+                dateSelector.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = date;
+                option2.textContent = formatDateForDisplay(date);
+                previousDateSelector.appendChild(option2);
+            });
+        }
+
+        function formatDateForDisplay(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (dateStr === today.toISOString().split('T')[0]) {
+                return 'Today';
+            } else if (dateStr === yesterday.toISOString().split('T')[0]) {
+                return 'Yesterday';
+            } else {
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+                });
+            }
+        }
+
+        async function fetchProductionData() {
+            try {
+                const dateSelector = document.getElementById('dateSelector');
+                const previousDateSelector = document.getElementById('previousDateSelector');
+                
+                const params = new URLSearchParams();
+                if (dateSelector.value) params.append('date', dateSelector.value);
+                if (previousDateSelector.value) params.append('previous', previousDateSelector.value);
+
+                const response = await fetch('/api/daily-production?' + params.toString());
+                if (!response.ok) throw new Error('Failed to fetch production data');
+
+                const data = await response.json();
+                
+                // Update available dates if changed
+                if (JSON.stringify(data.available_dates) !== JSON.stringify(availableDates)) {
+                    availableDates = data.available_dates || [];
+                    updateDateSelectors(availableDates);
+                }
+
+                // Update chart
+                drawChart(data.current_day, data.previous_day);
+                updateChartStats(data.current_day, data.previous_day);
+
+            } catch (error) {
+                console.error('Error fetching production data:', error);
+                // Show error in chart area
+                const ctx = productionChart.ctx;
+                ctx.clearRect(0, 0, productionChart.canvas.width, productionChart.canvas.height);
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Error loading production data', 
+                    productionChart.canvas.width / 2, 
+                    productionChart.canvas.height / 2);
+            }
         }
 
         function updateSolarPosition(position) {
@@ -420,17 +862,24 @@
             }
         }
 
-        // Initial load
-        fetchData();
-        
-        // Update every 30 seconds
-        setInterval(fetchData, 30000);
-        
-        // Update solar position every minute (even without new data)
-        setInterval(() => {
-            const now = new Date();
-            // This would need to be calculated client-side or fetch fresh position data
-        }, 60000);
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            
+            // Set up event listeners for date selectors
+            document.getElementById('dateSelector').addEventListener('change', fetchProductionData);
+            document.getElementById('previousDateSelector').addEventListener('change', fetchProductionData);
+
+            // Initial load
+            fetchData();
+            fetchProductionData();
+            
+            // Update every 30 seconds for live data
+            setInterval(fetchData, 30000);
+            
+            // Update production chart every 5 minutes
+            setInterval(fetchProductionData, 5 * 60000);
+        });
     </script>
 </body>
 </html>

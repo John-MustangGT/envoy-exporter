@@ -1,0 +1,9 @@
+#
+# add this to the end of your prometheus configuration
+# Typically /etc/prometheus/prometheus.yml 
+#
+  - job_name: solar
+    # Metrics for Envoy Solar Combiner
+    static_configs:
+      - targets: ['localhost:8080']
+

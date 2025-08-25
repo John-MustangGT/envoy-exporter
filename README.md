@@ -39,5 +39,6 @@ The XML config supports the `{envoy_ip}` placeholder which gets replaced with yo
 The program automatically handles the same authentication flow and maintains the token in memory and refreshes it as needed, making it suitable for continuous operation with Prometheus scraping.
 
 ### **Referances** 
-[Prometheus]: https://prometheus.io/docs/prometheus/latest/getting_started/
-[Enphase]: https://enphase.com/download/iq-gateway-local-apis-or-ui-access-using-token
+* *Prometheus*: `https://prometheus.io/docs/prometheus/latest/getting_started/`
+* *Enphase*: `https://enphase.com/download/iq-gateway-local-apis-or-ui-access-using-token`
+* *Enphase V4 api* `https://developer-v4.enphase.com/docs.html`

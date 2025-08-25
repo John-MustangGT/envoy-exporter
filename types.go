@@ -1,21 +1,8 @@
 package main
 
 import (
-	"crypto/tls"
-	"encoding/json"
 	"encoding/xml"
-	"fmt"
-	"io"
-	"log"
-	"math"
 	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
-	"reflect"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -183,15 +170,16 @@ type QueryResult struct {
 }
 
 type EnvoyExporter struct {
-	config       Config
-	token        string
-	tokenExpires int64
-	tokenMutex   sync.RWMutex
-	httpClient   *http.Client
-	metricCache  map[string]float64
-	cacheMutex   sync.RWMutex
-	queryResults map[string]QueryResult
-	resultsMutex sync.RWMutex
-	lastMonitorData MonitorData
-	monitorMutex sync.RWMutex
+	config            Config
+	token             string
+	tokenExpires      int64
+	tokenMutex        sync.RWMutex
+	httpClient        *http.Client
+	metricCache       map[string]float64
+	cacheMutex        sync.RWMutex
+	queryResults      map[string]QueryResult
+	resultsMutex      sync.RWMutex
+	lastMonitorData   MonitorData
+	monitorMutex      sync.RWMutex
+	productionTracker *ProductionTracker  // ADD THIS LINE
 }

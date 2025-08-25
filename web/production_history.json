@@ -1,0 +1,184 @@
+{
+  "days": {
+    "2025-08-25": {
+      "date": "2025-08-25",
+      "hourly_data": [
+        {
+          "hour": 0,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 1,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 2,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 3,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 4,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 5,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 6,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 7,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 8,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 9,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 10,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 11,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 12,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 13,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 14,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 15,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 16,
+          "production": 3946,
+          "power": 3946,
+          "timestamp": 1756139275,
+          "sample_count": 3
+        },
+        {
+          "hour": 17,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 18,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 19,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 20,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 21,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 22,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        },
+        {
+          "hour": 23,
+          "production": 0,
+          "power": 0,
+          "timestamp": 0,
+          "sample_count": 0
+        }
+      ],
+      "total_wh": 22505,
+      "peak_watts": 4856,
+      "peak_hour": 16,
+      "first_sample": 1756138675,
+      "last_sample": 1756139275,
+      "sample_count": 3
+    }
+  },
+  "last_cleanup": 0
+}

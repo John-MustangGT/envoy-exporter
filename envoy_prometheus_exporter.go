@@ -510,10 +510,83 @@ func (e *EnvoyExporter) transformValue(value interface{}, transform string) inte
 
 func (e *EnvoyExporter) serveHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	
+	// Basic system health
 	status := map[string]interface{}{
-		"status": "ok",
-		"envoy_ip": e.config.EnvoyIP,
+		"status":    "ok",
+		"envoy_ip":  e.config.EnvoyIP,
+		"timestamp": time.Now().Unix(),
 	}
+
+	// Add production tracker status
+	if e.productionTracker != nil {
+		status["production_tracking"] = map[string]interface{}{
+			"enabled": true,
+			"days_stored": len(e.productionTracker.history.Days),
+			"last_cleanup": e.productionTracker.history.LastCleanup,
+		}
+	} else {
+		status["production_tracking"] = map[string]interface{}{
+			"enabled": false,
+		}
+	}
+
+	// Add MQTT status
+	mqttStatus := map[string]interface{}{
+		"enabled": e.config.MQTT.Enabled,
+	}
+	
+	if e.config.MQTT.Enabled {
+		mqttStatus["broker"] = fmt.Sprintf("%s:%d", e.config.MQTT.Broker, e.config.MQTT.Port)
+		mqttStatus["topic_prefix"] = e.config.MQTT.TopicPrefix
+		mqttStatus["publish_interval"] = e.config.MQTT.PublishInterval
+		
+		if e.mqttPublisher != nil {
+			mqttStatus["connected"] = e.mqttPublisher.IsConnected()
+			mqttStatus["last_publish"] = e.mqttPublisher.lastPublish
+			
+			// Add time since last publish
+			if e.mqttPublisher.lastPublish > 0 {
+				mqttStatus["seconds_since_publish"] = time.Now().Unix() - e.mqttPublisher.lastPublish
+			}
+		} else {
+			mqttStatus["connected"] = false
+			mqttStatus["last_publish"] = 0
+		}
+	}
+	
+	status["mqtt"] = mqttStatus
+
+	// Add monitor data freshness
+	e.monitorMutex.RLock()
+	lastMonitorUpdate := e.lastMonitorData.Timestamp
+	e.monitorMutex.RUnlock()
+	
+	if !lastMonitorUpdate.IsZero() {
+		status["monitor_data"] = map[string]interface{}{
+			"last_update": lastMonitorUpdate.Unix(),
+			"seconds_ago": int(time.Since(lastMonitorUpdate).Seconds()),
+			"fresh": time.Since(lastMonitorUpdate) < 60*time.Second,
+		}
+	} else {
+		status["monitor_data"] = map[string]interface{}{
+			"last_update": 0,
+			"fresh": false,
+		}
+	}
+
+	// Token status
+	e.tokenMutex.RLock()
+	tokenExpires := e.tokenExpires
+	hasToken := e.token != ""
+	e.tokenMutex.RUnlock()
+	
+	status["authentication"] = map[string]interface{}{
+		"has_token": hasToken,
+		"token_expires": tokenExpires,
+		"token_valid": hasToken && tokenExpires > time.Now().Unix(),
+	}
+
 	json.NewEncoder(w).Encode(status)
 }
 

@@ -103,17 +103,17 @@
         },
         {
           "hour": 14,
-          "production": 0,
-          "power": 0,
-          "timestamp": 0,
-          "sample_count": 0
+          "production": 5086.416666666667,
+          "power": 5086.416666666667,
+          "timestamp": 1756148244,
+          "sample_count": 12
         },
         {
           "hour": 15,
-          "production": 0,
-          "power": 0,
-          "timestamp": 0,
-          "sample_count": 0
+          "production": 4943,
+          "power": 4943,
+          "timestamp": 1756150044,
+          "sample_count": 6
         },
         {
           "hour": 16,
@@ -172,12 +172,12 @@
           "sample_count": 0
         }
       ],
-      "total_wh": 29444,
+      "total_wh": 40249,
       "peak_watts": 9471,
       "peak_hour": 17,
       "first_sample": 1756138675,
-      "last_sample": 1756143102,
-      "sample_count": 14
+      "last_sample": 1756150044,
+      "sample_count": 32
     }
   },
   "last_cleanup": 0

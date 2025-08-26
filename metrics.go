@@ -110,6 +110,8 @@ func (e *EnvoyExporter) processArrayMetrics(metric Metric, dataArray []interface
 	}
 }
 
+// Add this to your metrics.go file to include version metrics
+
 func (e *EnvoyExporter) serveMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 
@@ -156,6 +158,9 @@ func (e *EnvoyExporter) serveMetrics(w http.ResponseWriter, r *http.Request) {
 	// Process calculated metrics
 	e.processCalculatedMetrics(&metrics)
 
+	// Add version and build information metrics
+	e.addVersionMetrics(&metrics)
+
 	// Add exporter info
 	metrics.WriteString("# HELP envoy_exporter_up Exporter up status\n")
 	metrics.WriteString("# TYPE envoy_exporter_up gauge\n")
@@ -168,6 +173,32 @@ func (e *EnvoyExporter) serveMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics.WriteString("# HELP envoy_scrape_timestamp Timestamp of this scrape\n")
 	metrics.WriteString("# TYPE envoy_scrape_timestamp gauge\n")
 	metrics.WriteString(fmt.Sprintf("envoy_scrape_timestamp %d\n", time.Now().Unix()))
+
+	// Add MQTT status metrics
+	if e.config.MQTT.Enabled {
+		metrics.WriteString("# HELP envoy_mqtt_enabled MQTT publishing enabled\n")
+		metrics.WriteString("# TYPE envoy_mqtt_enabled gauge\n")
+		metrics.WriteString("envoy_mqtt_enabled 1\n")
+		
+		mqttConnected := 0
+		if e.mqttPublisher != nil && e.mqttPublisher.IsConnected() {
+			mqttConnected = 1
+		}
+		
+		metrics.WriteString("# HELP envoy_mqtt_connected MQTT broker connection status\n")
+		metrics.WriteString("# TYPE envoy_mqtt_connected gauge\n")
+		metrics.WriteString(fmt.Sprintf("envoy_mqtt_connected %d\n", mqttConnected))
+		
+		if e.mqttPublisher != nil && e.mqttPublisher.lastPublish > 0 {
+			metrics.WriteString("# HELP envoy_mqtt_last_publish_timestamp Last MQTT publish timestamp\n")
+			metrics.WriteString("# TYPE envoy_mqtt_last_publish_timestamp gauge\n")
+			metrics.WriteString(fmt.Sprintf("envoy_mqtt_last_publish_timestamp %d\n", e.mqttPublisher.lastPublish))
+		}
+	} else {
+		metrics.WriteString("# HELP envoy_mqtt_enabled MQTT publishing enabled\n")
+		metrics.WriteString("# TYPE envoy_mqtt_enabled gauge\n")
+		metrics.WriteString("envoy_mqtt_enabled 0\n")
+	}
 
 	w.Write([]byte(metrics.String()))
 }

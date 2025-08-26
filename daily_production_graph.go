@@ -3,7 +3,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -71,7 +70,7 @@ func (e *EnvoyExporter) initProductionTracking() {
 	go tracker.trackingLoop(e)
 
 	e.productionTracker = tracker
-	log.Printf("Production tracking initialized with data file: %s", dataFile)
+	LogInfo("Production tracking initialized with data file: %s", dataFile)
 }
 
 func (pt *ProductionTracker) loadHistory() {
@@ -81,16 +80,16 @@ func (pt *ProductionTracker) loadHistory() {
 	data, err := os.ReadFile(pt.dataFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			log.Printf("Error reading production history: %v", err)
+			LogInfo("Error reading production history: %v", err)
 		} else {
-			log.Printf("Production history file doesn't exist, will create new one")
+			LogInfo("Production history file doesn't exist, will create new one")
 		}
 		return
 	}
 
 	var loadedHistory ProductionHistory
 	if err := json.Unmarshal(data, &loadedHistory); err != nil {
-		log.Printf("Error parsing production history: %v", err)
+		LogInfo("Error parsing production history: %v", err)
 		return
 	}
 
@@ -107,7 +106,7 @@ func (pt *ProductionTracker) loadHistory() {
 		}
 	}
 
-	log.Printf("Loaded production history for %d days", len(pt.history.Days))
+	LogInfo("Loaded production history for %d days", len(pt.history.Days))
 }
 
 func (pt *ProductionTracker) saveHistory() {
@@ -116,49 +115,49 @@ func (pt *ProductionTracker) saveHistory() {
 
 	// FIXED: Check if we actually have data to save
 	if !pt.dataChanged {
-		log.Printf("No data changes since last save, skipping")
+		LogInfo("No data changes since last save, skipping")
 		return
 	}
 
-	log.Printf("Saving production history...")
+	LogInfo("Saving production history...")
 
 	pt.history.mutex.RLock()
 	data, err := json.MarshalIndent(pt.history, "", "  ")
 	pt.history.mutex.RUnlock()
 
 	if err != nil {
-		log.Printf("Error marshaling production history: %v", err)
+		LogInfo("Error marshaling production history: %v", err)
 		return
 	}
 
 	// Ensure directory exists
 	dir := filepath.Dir(pt.dataFile)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		log.Printf("Error creating directory %s: %v", dir, err)
+		LogInfo("Error creating directory %s: %v", dir, err)
 		return
 	}
 
 	// Write to temporary file first, then rename (atomic operation)
 	tempFile := pt.dataFile + ".tmp"
 	if err := os.WriteFile(tempFile, data, 0644); err != nil {
-		log.Printf("Error writing production history temp file: %v", err)
+		LogInfo("Error writing production history temp file: %v", err)
 		return
 	}
 
 	if err := os.Rename(tempFile, pt.dataFile); err != nil {
-		log.Printf("Error renaming production history file: %v", err)
+		LogInfo("Error renaming production history file: %v", err)
 		os.Remove(tempFile)
 		return
 	}
 
 	pt.lastSave = time.Now().Unix()
 	pt.dataChanged = false  // FIXED: Reset the change flag
-	log.Printf("Production history saved successfully to %s", pt.dataFile)
+	LogInfo("Production history saved successfully to %s", pt.dataFile)
 }
 
 // FIXED: More robust tracking loop with better error handling
 func (pt *ProductionTracker) trackingLoop(exporter *EnvoyExporter) {
-	log.Printf("Starting production tracking loop...")
+	LogInfo("Starting production tracking loop...")
 	
 	ticker := time.NewTicker(5 * time.Minute) // Sample every 5 minutes
 	defer ticker.Stop()
@@ -176,23 +175,23 @@ func (pt *ProductionTracker) trackingLoop(exporter *EnvoyExporter) {
 	for {
 		select {
 		case <-ticker.C:
-			log.Printf("Recording current production...")
+			LogInfo("Recording current production...")
 			pt.recordCurrentProduction(exporter)
 
 		case <-saveTicker.C:
-			log.Printf("Save ticker triggered...")
+			LogInfo("Save ticker triggered...")
 			pt.saveHistory()
 
 		case <-initialSave.C:
-			log.Printf("Initial save triggered...")
+			LogInfo("Initial save triggered...")
 			pt.saveHistory()
 
 		case <-cleanupTicker.C:
-			log.Printf("Cleanup ticker triggered...")
+			LogInfo("Cleanup ticker triggered...")
 			pt.cleanupOldData()
 
 		case <-pt.shutdown:
-			log.Printf("Production tracking shutdown requested")
+			LogInfo("Production tracking shutdown requested")
 			// Final save before shutdown
 			pt.saveHistory()
 			return
@@ -206,7 +205,7 @@ func (pt *ProductionTracker) recordCurrentProduction(exporter *EnvoyExporter) {
 	dateStr := now.Format("2006-01-02")
 	hour := now.Hour()
 
-	log.Printf("Recording production for %s hour %d", dateStr, hour)
+	LogInfo("Recording production for %s hour %d", dateStr, hour)
 
 	// Get current monitor data
 	exporter.monitorMutex.RLock()
@@ -214,11 +213,11 @@ func (pt *ProductionTracker) recordCurrentProduction(exporter *EnvoyExporter) {
 	exporter.monitorMutex.RUnlock()
 
 	if monitorData.Production.CurrentWatts == 0 && monitorData.Production.TodayWh == 0 {
-		log.Printf("No production data available, skipping recording")
+		LogInfo("No production data available, skipping recording")
 		return
 	}
 
-	log.Printf("Recording: CurrentWatts=%.1f, TodayWh=%.1f", 
+	LogInfo("Recording: CurrentWatts=%.1f, TodayWh=%.1f", 
 		monitorData.Production.CurrentWatts, monitorData.Production.TodayWh)
 
 	pt.history.mutex.Lock()
@@ -226,7 +225,7 @@ func (pt *ProductionTracker) recordCurrentProduction(exporter *EnvoyExporter) {
 
 	// Ensure day exists
 	if pt.history.Days[dateStr] == nil {
-		log.Printf("Creating new day entry for %s", dateStr)
+		LogInfo("Creating new day entry for %s", dateStr)
 		pt.history.Days[dateStr] = &DailyProduction{
 			Date:       dateStr,
 			HourlyData: make([]HourlyData, 24),
@@ -276,13 +275,13 @@ func (pt *ProductionTracker) recordCurrentProduction(exporter *EnvoyExporter) {
 	// FIXED: Mark data as changed
 	if previousSampleCount != hourData.SampleCount || previousTotal != day.TotalWh {
 		pt.dataChanged = true
-		log.Printf("Data changed - marked for save. Hour %d: samples=%d, power=%.1f, production=%.1f", 
+		LogInfo("Data changed - marked for save. Hour %d: samples=%d, power=%.1f, production=%.1f", 
 			hour, hourData.SampleCount, hourData.Power, hourData.Production)
 	}
 }
 
 func (pt *ProductionTracker) cleanupOldData() {
-	log.Printf("Starting cleanup of old production data...")
+	LogInfo("Starting cleanup of old production data...")
 	
 	pt.history.mutex.Lock()
 	defer pt.history.mutex.Unlock()
@@ -301,12 +300,12 @@ func (pt *ProductionTracker) cleanupOldData() {
 	pt.history.LastCleanup = time.Now().Unix()
 	pt.dataChanged = true // Mark for save after cleanup
 	
-	log.Printf("Cleaned up %d days of production data older than %s", removedCount, cutoffStr)
+	LogInfo("Cleaned up %d days of production data older than %s", removedCount, cutoffStr)
 }
 
 // FIXED: Add graceful shutdown method
 func (pt *ProductionTracker) Shutdown() {
-	log.Printf("Shutting down production tracker...")
+	LogInfo("Shutting down production tracker...")
 	close(pt.shutdown)
 }
 
@@ -376,7 +375,7 @@ func formatProductionForAPI(day *DailyProduction) map[string]interface{} {
 // FIXED: Add method to manually trigger save (useful for testing)
 func (e *EnvoyExporter) ForceSaveProductionHistory() {
 	if e.productionTracker != nil {
-		log.Printf("Force saving production history...")
+		LogInfo("Force saving production history...")
 		e.productionTracker.dataChanged = true
 		e.productionTracker.saveHistory()
 	}

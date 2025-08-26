@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -80,7 +79,7 @@ func (e *EnvoyExporter) refreshToken() error {
 		e.tokenMutex.Unlock()
 	}
 
-	log.Printf("Token refreshed, expires at: %s", time.Unix(e.tokenExpires, 0))
+	LogInfo("Token refreshed, expires at: %s", time.Unix(e.tokenExpires, 0))
 	return nil
 }
 
@@ -102,7 +101,7 @@ func (e *EnvoyExporter) tokenRefreshLoop() {
 
 		err := e.refreshToken()
 		if err != nil {
-			log.Printf("Failed to refresh token: %v", err)
+			LogInfo("Failed to refresh token: %v", err)
 			time.Sleep(5 * time.Minute) // Retry in 5 minutes
 		}
 	}

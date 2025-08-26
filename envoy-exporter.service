@@ -1,19 +1,39 @@
 [Unit]
-Description=Envoy Exporter for monitoring EnPhase 
+Description=Envoy Prometheus Exporter
+Documentation=https://github.com/John-MustangGT/envoy-exporter
 After=network.target
+Wants=network.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/usr/share/envoy-exporter
-ExecStart=/usr/bin/envoy-prometheus-exporter
+User=envoy-exporter
+Group=envoy-exporter
+WorkingDirectory=/var/lib/envoy-exporter
+
+# Main command
+ExecStart=/usr/local/bin/envoy-exporter -config /etc/envoy-exporter/envoy_config.xml
+
+# Restart policy
 Restart=always
-RestartSec=5
+RestartSec=10
+TimeoutStopSec=30
+
+# Logging configuration
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=envoy-exporter
-Environment=PATH=/usr/bin:/bin
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/envoy-exporter
+
+# Environment variables (optional)
+# Environment=DEBUG=false
+# Environment=DISABLE_LOG_TIMESTAMP=true
+# Environment=LOG_PREFIX=[solar-monitor]
 
 [Install]
 WantedBy=multi-user.target

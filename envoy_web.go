@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -90,7 +89,7 @@ func (e *EnvoyExporter) createDefaultWebFiles() {
 	os.WriteFile(filepath.Join(e.config.WebDir, "index.html"), []byte(indexHTML), 0644)
 	os.WriteFile(filepath.Join(e.config.WebDir, "monitor.html"), []byte(monitorHTML), 0644)
 	
-	log.Printf("Created default web files with production tracking in %s", e.config.WebDir)
+	LogInfo("Created default web files with production tracking in %s", e.config.WebDir)
 }
 
 // Helper function to get the enhanced monitor HTML

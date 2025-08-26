@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
-	"log"
 	"fmt"
 	"encoding/json"
 	"math"
@@ -126,20 +125,20 @@ func (e *EnvoyExporter) serveMetrics(w http.ResponseWriter, r *http.Request) {
 	for _, query := range e.config.Queries {
 		data, err := e.makeEnvoyRequest(query.URL)
 		if err != nil {
-			log.Printf("Failed to query %s: %v", query.Name, err)
+			LogInfo("Failed to query %s: %v", query.Name, err)
 			continue
 		}
 
 		// Parse JSON data
 		var jsonData interface{}
 		if err := json.Unmarshal(data, &jsonData); err != nil {
-			log.Printf("Failed to parse JSON for %s: %v", query.Name, err)
+			LogInfo("Failed to parse JSON for %s: %v", query.Name, err)
 			continue
 		}
 		
 		// Check if endpoint is accessible (for condition evaluation)
 		if !e.checkCondition(query.Condition, jsonData) {
-			log.Printf("Condition not met for query %s, skipping", query.Name)
+			LogInfo("Condition not met for query %s, skipping", query.Name)
 			continue
 		}
 

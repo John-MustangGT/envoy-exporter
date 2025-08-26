@@ -11,13 +11,23 @@ import (
 )
 
 func main() {
+	// Initialize logging before anything else
+	InitializeLogging()
+	
 	// Command line flags
 	var (
 		configFile = flag.String("config", "envoy_config.xml", "Configuration file path")
 		version    = flag.Bool("version", false, "Show version information")
 		versionF   = flag.Bool("v", false, "Show version information (short)")
+		noTimestamp = flag.Bool("no-timestamp", false, "Disable log timestamps (useful for systemd)")
 	)
 	flag.Parse()
+
+	// Handle explicit no-timestamp flag
+	if *noTimestamp {
+		log.SetFlags(0)
+		log.SetPrefix("[envoy-exporter] ")
+	}
 
 	// Handle version flag
 	if *version || *versionF {
@@ -30,8 +40,8 @@ func main() {
 		*configFile = flag.Arg(0)
 	}
 
-	log.Printf("Starting %s", GetVersionString())
-	log.Printf("Using configuration file: %s", *configFile)
+	LogInfo("Starting %s", GetVersionString())
+	LogInfo("Using configuration file: %s", *configFile)
 
 	exporter, err := NewEnvoyExporter(*configFile)
 	if err != nil {
@@ -44,7 +54,7 @@ func main() {
 	
 	go func() {
 		sig := <-sigChan
-		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		LogInfo("Received signal %v, shutting down gracefully...", sig)
 		
 		// Shutdown production tracker
 		if exporter.productionTracker != nil {
@@ -56,13 +66,13 @@ func main() {
 			exporter.mqttPublisher.Shutdown()
 		}
 		
-		log.Printf("Graceful shutdown complete")
+		LogInfo("Graceful shutdown complete")
 		os.Exit(0)
 	}()
 
 	// Ensure web directory exists
 	if _, err := os.Stat(exporter.config.WebDir); os.IsNotExist(err) {
-		log.Printf("Creating web directory: %s", exporter.config.WebDir)
+		LogInfo("Creating web directory: %s", exporter.config.WebDir)
 		os.MkdirAll(exporter.config.WebDir, 0755)
 		
 		// Create default files if they don't exist
@@ -87,25 +97,24 @@ func main() {
 	
 	// Log startup information
 	buildInfo := GetBuildInfo()
-	log.Printf("Enhanced Configuration-Driven Envoy Prometheus Exporter")
-	log.Printf("Version: %s (%s)", buildInfo.Version, buildInfo.GitCommit)
-	log.Printf("Built: %s by %s@%s", buildInfo.BuildTime, buildInfo.BuildUser, buildInfo.BuildHost)
-	log.Printf("Go: %s (%s)", buildInfo.GoRuntime, buildInfo.Platform)
-	log.Printf("Listening on: %s", listenAddr)
-	log.Printf("Envoy IP: %s", exporter.config.EnvoyIP)
-	log.Printf("Web Directory: %s", exporter.config.WebDir)
-	log.Printf("Location: %.6f, %.6f", exporter.config.Latitude, exporter.config.Longitude)
-	log.Printf("Production tracking enabled")
+	LogInfo("Enhanced Configuration-Driven Envoy Prometheus Exporter")
+	LogInfo("Version: %s (%s)", buildInfo.Version, buildInfo.GitCommit)
+	LogInfo("Built: %s by %s@%s", buildInfo.BuildTime, buildInfo.BuildUser, buildInfo.BuildHost)
+	LogInfo("Go: %s (%s)", buildInfo.GoRuntime, buildInfo.Platform)
+	LogInfo("Listening on: %s", listenAddr)
+	LogInfo("Envoy IP: %s", exporter.config.EnvoyIP)
+	LogInfo("Web Directory: %s", exporter.config.WebDir)
+	LogInfo("Location: %.6f, %.6f", exporter.config.Latitude, exporter.config.Longitude)
+	LogInfo("Production tracking enabled")
 	
 	// Log MQTT status
 	if exporter.config.MQTT.Enabled {
-		log.Printf("MQTT publishing enabled - Broker: %s:%d, Topic: %s, Interval: %ds", 
+		LogInfo("MQTT publishing enabled - Broker: %s:%d, Topic: %s, Interval: %ds", 
 			exporter.config.MQTT.Broker, exporter.config.MQTT.Port, 
 			exporter.config.MQTT.TopicPrefix, exporter.config.MQTT.PublishInterval)
 	} else {
-		log.Printf("MQTT publishing disabled")
+		LogInfo("MQTT publishing disabled")
 	}
-	
 	log.Printf("Access the web interface at: http://localhost%s", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, nil))
 }
